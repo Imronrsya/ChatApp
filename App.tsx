@@ -3,7 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { View, ActivityIndicator } from "react-native";
 import LoginScreen from "./screens/LoginScreen";
-import RegisterScreen from "./screens/RegisterScreen"; // Kita akan buat ini nanti
+import RegisterScreen from "./screens/RegisterScreen";
 import ChatScreen from "./screens/ChatScreen";
 import { auth, onAuthStateChanged } from "./firebase";
 import { User } from "firebase/auth";
@@ -20,43 +20,43 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(true);
-  
-  // State untuk memantau login via MMKV (agar logout offline jalan real-time)
+
+  // Untuk memantau sesi lokal (logout offline)
   const [hasLocalSession, setHasLocalSession] = useState<boolean>(
-    !!storage.getString('user.uid')
+    !!storage.getString("user.uid")
   );
-  
-  // State lokal untuk nama
+
+  // Nama lokal (untuk header ChatScreen)
   const [localName, setLocalName] = useState<string | null>(() => {
-      return storage.getString('user.name') || null;
+    return storage.getString("user.name") || null;
   });
 
   useEffect(() => {
-    // 1. LISTENER MMKV (PENTING UNTUK LOGOUT & REGISTER)
+    // 1. Listener MMKV → update realtime logout & nama
     const listener = storage.addOnValueChangedListener((changedKey) => {
-      // Jika user.uid berubah/dihapus (saat logout), update state sesi
-      if (changedKey === 'user.uid') {
-        const uid = storage.getString('user.uid');
+      if (changedKey === "user.uid") {
+        const uid = storage.getString("user.uid");
         setHasLocalSession(!!uid);
       }
-      // Jika user.name berubah (saat register), update nama
-      if (changedKey === 'user.name') {
-        const newName = storage.getString('user.name');
+
+      if (changedKey === "user.name") {
+        const newName = storage.getString("user.name");
         if (newName) setLocalName(newName);
       }
     });
 
-    // 2. LISTENER FIREBASE AUTH
+    // 2. Listener Firebase Auth
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      
+
       if (u) {
+        // Update nama hanya ketika sudah pasti login
         const displayName = u.displayName || u.email;
         if (displayName) {
-            storage.set('user.name', displayName);
-            setLocalName(displayName);
-        } 
-      } 
+          storage.set("user.name", displayName);
+          setLocalName(displayName);
+        }
+      }
 
       if (initializing) setInitializing(false);
     });
@@ -67,27 +67,33 @@ export default function App() {
     };
   }, []);
 
+  // Jika masih inisialisasi Firebase
   if (initializing) {
     return (
-      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#0000ff" />
       </View>
     );
   }
 
-  const finalName = localName || user?.displayName || user?.email || "Guest";
-  // Logika Login: Cek Firebase User ATAU Local Storage (untuk offline)
-  const isLoggedIn = user || storage.getString('user.uid');
+  // Fallback "User" instead of "Guest" (karena tidak ada guest login lagi)
+  const finalName =
+    localName || user?.displayName || user?.email || "User";
+
+  // Logged in jika:
+  // - Firebase Auth ada user, atau
+  // - MMKV memiliki 'user.uid'
+  const isLoggedIn = hasLocalSession || user;
 
   return (
     <NavigationContainer>
       <Stack.Navigator>
         {isLoggedIn ? (
-          <Stack.Screen 
-            name="Chat" 
-            component={ChatScreen} 
-            initialParams={{ name: finalName }} 
-            options={{ title: `User: ${finalName}` }}
+          <Stack.Screen
+            name="Chat"
+            component={ChatScreen}
+            initialParams={{ name: finalName }}
+            options={{ headerShown: true }}
           />
         ) : (
           <Stack.Group screenOptions={{ headerShown: false }}>

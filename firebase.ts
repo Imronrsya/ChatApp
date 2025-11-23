@@ -9,6 +9,8 @@ import {
   onSnapshot,
   CollectionReference,
   DocumentData,
+  updateDoc,
+  doc,
 } from "firebase/firestore";
 import {
   getAuth,
@@ -17,10 +19,10 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  updateProfile // Tambahan untuk update nama user
+  updateProfile
 } from "firebase/auth";
 
-// --- KONFIGURASI FIREBASE ANDA ---
+// Konfigurasi Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBQRziRtSa5h6KlkIUOKLKU0mfAqTGZPl8",
   authDomain: "chatapp-8d2fb.firebaseapp.com",
@@ -31,17 +33,18 @@ const firebaseConfig = {
   measurementId: "G-HZDMVCLH3Q"
 };
 
+// Inisialisasi Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
 
-// Referensi ke tabel 'messages'
-const messagesCollection = collection(db, "messages") as CollectionReference<DocumentData>;
+// Siapkan Auth dan Firestore
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
+// Referensi koleksi messages
+export const messagesCollection = collection(db, "messages") as CollectionReference<DocumentData>;
+
+// Ekspor fungsi-fungsi yang digunakan di aplikasi
 export {
-  auth,
-  db,
-  messagesCollection, // Export variabel ini biar gampang dipanggil
   collection,
   addDoc,
   serverTimestamp,
@@ -53,5 +56,7 @@ export {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  updateProfile
+  updateProfile,
+  updateDoc,
+  doc,
 };
