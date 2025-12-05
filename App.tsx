@@ -21,18 +21,15 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(true);
 
-  // Untuk memantau sesi lokal (logout offline)
   const [hasLocalSession, setHasLocalSession] = useState<boolean>(
     !!storage.getString("user.uid")
   );
 
-  // Nama lokal (untuk header ChatScreen)
   const [localName, setLocalName] = useState<string | null>(() => {
     return storage.getString("user.name") || null;
   });
 
   useEffect(() => {
-    // 1. Listener MMKV → update realtime logout & nama
     const listener = storage.addOnValueChangedListener((changedKey) => {
       if (changedKey === "user.uid") {
         const uid = storage.getString("user.uid");
@@ -45,12 +42,10 @@ export default function App() {
       }
     });
 
-    // 2. Listener Firebase Auth
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
 
       if (u) {
-        // Update nama hanya ketika sudah pasti login
         const displayName = u.displayName || u.email;
         if (displayName) {
           storage.set("user.name", displayName);
@@ -67,7 +62,6 @@ export default function App() {
     };
   }, []);
 
-  // Jika masih inisialisasi Firebase
   if (initializing) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -76,13 +70,9 @@ export default function App() {
     );
   }
 
-  // Fallback "User" instead of "Guest" (karena tidak ada guest login lagi)
   const finalName =
     localName || user?.displayName || user?.email || "User";
 
-  // Logged in jika:
-  // - Firebase Auth ada user, atau
-  // - MMKV memiliki 'user.uid'
   const isLoggedIn = hasLocalSession || user;
 
   return (

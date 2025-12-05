@@ -26,29 +26,33 @@ export default function LoginScreen({ navigation }: Props) {
   const [loadingLogin, setLoadingLogin] = useState<boolean>(false);
   const [passwordHidden, setPasswordHidden] = useState<boolean>(true);
 
-  // ====================
-  // LOGIN EMAIL
-  // ====================
+  const isValidEmail = (email: string) => /\S+@\S+\.\S+/.test(email);
+
   const handleLogin = async () => {
-    if (!email || !password) {
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
       Alert.alert("Error", "Email dan Password wajib diisi!");
+      return;
+    }
+
+    if (!isValidEmail(trimmedEmail)) {
+      Alert.alert("Error", "Format email tidak valid!");
       return;
     }
 
     setLoadingLogin(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
       const user = userCredential.user;
 
-      // Simpan session ke MMKV
       storage.set("user.uid", user.uid);
       if (user.email) storage.set("user.email", user.email);
 
       const displayName = user.displayName || user.email || "User";
       storage.set("user.name", displayName);
-
-      // Tidak perlu navigate → App.tsx akan membaca MMKV & redirect
 
     } catch (error: any) {
       Alert.alert("Login Gagal", "Email atau password salah.");
@@ -57,22 +61,20 @@ export default function LoginScreen({ navigation }: Props) {
     }
   };
 
-  // ====================
-  // REGISTER (NAVIGATE)
-  // ====================
   const handleGoToRegister = () => {
     navigation.navigate("Register");
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Chat App</Text>
-      <Text style={styles.subtitle}>Silakan login untuk melanjutkan</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Chat App</Text>
+      </View>
 
-      {/* Input Email */}
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
+      <View style={styles.content}>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
         placeholderTextColor="#888"
         value={email}
         onChangeText={setEmail}
@@ -80,7 +82,6 @@ export default function LoginScreen({ navigation }: Props) {
         keyboardType="email-address"
       />
 
-      {/* Input Password + Icon */}
       <View style={styles.passwordContainer}>
         <TextInput
           style={styles.inputPassword}
@@ -95,25 +96,24 @@ export default function LoginScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* Tombol Login */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={handleLogin}
-        disabled={loadingLogin}
-      >
-        {loadingLogin ? (
-          <ActivityIndicator size="small" color="#FFF" />
-        ) : (
-          <Text style={styles.buttonText}>Login</Text>
-        )}
-      </TouchableOpacity>
-
-      {/* Link Register */}
-      <View style={styles.registerContainer}>
-        <Text style={styles.registerText}>Belum punya akun? </Text>
-        <TouchableOpacity onPress={handleGoToRegister}>
-          <Text style={styles.registerLink}>Daftar di sini</Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleLogin}
+          disabled={loadingLogin}
+        >
+          {loadingLogin ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <Text style={styles.buttonText}>Login</Text>
+          )}
         </TouchableOpacity>
+
+        <View style={styles.registerContainer}>
+          <Text style={styles.registerText}>Belum punya akun? </Text>
+          <TouchableOpacity onPress={handleGoToRegister}>
+            <Text style={styles.registerLink}>Register</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -122,16 +122,22 @@ export default function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
     backgroundColor: "#FFF"
+  },
+  header: {
+    paddingTop: 60,
+    paddingBottom: 20,
+    alignItems: "center",
+  },
+  content: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
   },
   title: {
     fontSize: 32,
     fontWeight: "bold",
     color: "#000",
-    marginBottom: 5,
   },
   subtitle: {
     fontSize: 16,
@@ -168,7 +174,7 @@ const styles = StyleSheet.create({
   button: {
     width: "100%",
     height: 50,
-    backgroundColor: "#007AFF",
+    backgroundColor: "#DB4444",
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
@@ -181,13 +187,14 @@ const styles = StyleSheet.create({
   },
   registerContainer: {
     flexDirection: "row",
+    justifyContent: "center",
     marginTop: 18,
   },
   registerText: {
     color: "#666",
   },
   registerLink: {
-    color: "#007AFF",
+    color: "#DB4444",
     fontWeight: "bold",
   },
 });

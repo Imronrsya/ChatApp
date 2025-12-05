@@ -1,4 +1,3 @@
-// ChatScreen.tsx (dengan Image Preview & Caption seperti WhatsApp)
 import React, { useEffect, useState, useLayoutEffect, useRef } from "react";
 import {
   View,
@@ -94,7 +93,6 @@ export default function ChatScreen({ route, navigation }: Props) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
-  // State untuk image preview dengan caption (seperti WhatsApp)
   const [imagePreviewModal, setImagePreviewModal] = useState(false);
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
   const [imageCaption, setImageCaption] = useState<string>("");
@@ -109,6 +107,8 @@ export default function ChatScreen({ route, navigation }: Props) {
   const captionInputRef = useRef<TextInput>(null);
   const lastReadTimestamp = useRef<number>(Date.now());
   const hasMarkedAsRead = useRef<Set<string>>(new Set());
+  const pendingMessagesRef = useRef<MessageType[]>([]);
+  const isSyncingRef = useRef<boolean>(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -116,7 +116,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         return (
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#000' }}>{props.children}</Text>
-            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: isConnected ? '#007AFF' : '#808080', marginLeft: 8, marginTop: 2 }} />
+            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: isConnected ? '#DB4444' : '#808080', marginLeft: 8, marginTop: 2 }} />
           </View>
         );
       },
@@ -137,6 +137,10 @@ export default function ChatScreen({ route, navigation }: Props) {
   };
 
   useEffect(() => {
+    pendingMessagesRef.current = pendingMessages;
+  }, [pendingMessages]);
+
+  useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
       const online = state.isConnected === true;
       setIsConnected(online);
@@ -147,19 +151,25 @@ export default function ChatScreen({ route, navigation }: Props) {
         if (wasOffline.current) {
           showToast("Kembali online", "online");
           wasOffline.current = false;
-          if (pendingMessages.length > 0) syncPendingMessages();
+          if (pendingMessagesRef.current.length > 0) syncPendingMessages();
         }
       }
     });
     return () => unsubscribe();
-  }, [pendingMessages]);
+  }, []);
 
   const syncPendingMessages = async () => {
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
+
     const queueString = mmkvStorage.getString('offline_queue');
-    if (!queueString) return;
+    if (!queueString) {
+      isSyncingRef.current = false;
+      return;
+    }
     let queue: MessageType[] = [];
-    try { queue = JSON.parse(queueString); } catch (e) { console.log("Parse queue error", e); mmkvStorage.remove('offline_queue'); return; }
-    if (queue.length === 0) { mmkvStorage.remove('offline_queue'); return; }
+    try { queue = JSON.parse(queueString); } catch (e) { console.log("Parse queue error", e); mmkvStorage.remove('offline_queue'); isSyncingRef.current = false; return; }
+    if (queue.length === 0) { mmkvStorage.remove('offline_queue'); isSyncingRef.current = false; return; }
 
     showToast("Mengirim pesan tertunda...", "online");
     const remainingQueue: MessageType[] = [];
@@ -184,6 +194,7 @@ export default function ChatScreen({ route, navigation }: Props) {
       mmkvStorage.remove('offline_queue');
       showToast("Semua pesan terkirim", "online");
     }
+    isSyncingRef.current = false;
   };
 
   useEffect(() => {
@@ -255,10 +266,8 @@ export default function ChatScreen({ route, navigation }: Props) {
           read: data.read || false
         });
         
-        // Auto mark pesan dari orang lain sebagai read
         if (isOtherMessage && !data.read && !hasMarkedAsRead.current.has(doc.id)) {
           hasMarkedAsRead.current.add(doc.id);
-          // Update Firestore: mark as read
           updateDoc(doc.ref, { read: true }).catch(err => {
             console.log("Failed to mark as read:", err);
             hasMarkedAsRead.current.delete(doc.id);
@@ -363,10 +372,8 @@ export default function ChatScreen({ route, navigation }: Props) {
         Alert.alert("Gagal", "Gambar terlalu besar."); 
         return; 
       }
-      // Tampilkan preview modal
       setPreviewImageUri(fullBase64);
       setImagePreviewModal(true);
-      // Auto focus ke input caption setelah modal terbuka
       setTimeout(() => captionInputRef.current?.focus(), 300);
     } else if (asset.uri) {
       setPreviewImageUri(asset.uri);
@@ -383,7 +390,6 @@ export default function ChatScreen({ route, navigation }: Props) {
     
     await sendMessage(previewImageUri, imageCaption);
     
-    // Reset state
     setPreviewImageUri(null);
     setImageCaption("");
     setUploading(false);
@@ -409,17 +415,14 @@ export default function ChatScreen({ route, navigation }: Props) {
       return curDate !== prevDate;
     };
 
-    // Render status check marks
     const renderCheckMarks = () => {
       if (!isMyMessage) return null;
       
       if (item.pending) {
-        // Clock icon untuk pending
         return <Icon name="clock" size={12} color="#999" style={{ marginLeft: 10 }} />;
       }
       
       if (item.read) {
-        // Double check biru (sudah dibaca)
         return (
           <View style={{ flexDirection: 'row', marginLeft: 10 }}>
             <Icon name="check" size={12} color="#4FC3F7" style={{ marginLeft: -6 }} />
@@ -429,7 +432,6 @@ export default function ChatScreen({ route, navigation }: Props) {
       }
       
       if (item.delivered) {
-        // Double check abu-abu (terkirim)
         return (
           <View style={{ flexDirection: 'row', marginLeft: 10 }}>
             <Icon name="check" size={12} color="#999" style={{ marginLeft: -6 }} />
@@ -438,7 +440,6 @@ export default function ChatScreen({ route, navigation }: Props) {
         );
       }
       
-      // Single check abu-abu (sent)
       return <Icon name="check" size={12} color="#999" style={{ marginLeft: 10 }} />;
     };
 
@@ -488,7 +489,7 @@ export default function ChatScreen({ route, navigation }: Props) {
 
       <View style={styles.inputRow}>
         <TouchableOpacity onPress={pickImage} disabled={uploading} style={styles.iconButton}>
-          {uploading ? <ActivityIndicator size="small" color="#007AFF" /> : <Icon name="plus" size={24} color="#007AFF" />}
+          {uploading ? <ActivityIndicator size="small" color="#DB4444" /> : <Icon name="plus" size={24} color="#DB4444" />}
         </TouchableOpacity>
 
         <TextInput 
@@ -501,11 +502,10 @@ export default function ChatScreen({ route, navigation }: Props) {
         />
 
         <TouchableOpacity onPress={() => sendMessage(null)} style={[styles.iconButton, sending && styles.disabledButton]} disabled={sending}>
-          <Icon name="send" size={24} color={sending ? "#ccc" : "#007AFF"} />
+          <Icon name="send" size={24} color={sending ? "#ccc" : "#DB4444"} />
         </TouchableOpacity>
       </View>
 
-      {/* Modal untuk view full image */}
       <Modal visible={selectedImage !== null} transparent animationType="fade" onRequestClose={() => setSelectedImage(null)}>
         <SafeAreaView style={styles.modalContainer}>
           <TouchableOpacity style={styles.closeButtonContainer} onPress={() => setSelectedImage(null)}>
@@ -515,7 +515,6 @@ export default function ChatScreen({ route, navigation }: Props) {
         </SafeAreaView>
       </Modal>
 
-      {/* Modal untuk Image Preview dengan Caption (seperti WhatsApp) */}
       <Modal 
         visible={imagePreviewModal} 
         transparent 
@@ -526,14 +525,12 @@ export default function ChatScreen({ route, navigation }: Props) {
           style={styles.previewModalContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          {/* Header dengan tombol close */}
           <View style={styles.previewHeader}>
             <TouchableOpacity onPress={handleCancelImagePreview} style={styles.previewCloseButton}>
               <Icon name="x" size={28} color="white" />
             </TouchableOpacity>
           </View>
 
-          {/* Image Preview */}
           <View style={styles.previewImageContainer}>
             {previewImageUri && (
               <Image 
@@ -544,7 +541,6 @@ export default function ChatScreen({ route, navigation }: Props) {
             )}
           </View>
 
-          {/* Caption Input di bawah */}
           <View style={styles.previewInputContainer}>
             <TextInput
               ref={captionInputRef}
@@ -598,7 +594,6 @@ const styles = StyleSheet.create({
   timeContainer: { alignSelf: 'flex-end', marginTop: 4, marginLeft: 8, flexDirection: 'row', alignItems: 'center' },
   timeText: { fontSize: 10, color: '#555', opacity: 0.7 },
   
-  // Styles untuk Image Preview Modal (seperti WhatsApp)
   previewModalContainer: {
     flex: 1,
     backgroundColor: '#000',
@@ -646,7 +641,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DB4444',
     justifyContent: 'center',
     alignItems: 'center',
   },

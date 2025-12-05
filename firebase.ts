@@ -22,7 +22,6 @@ import {
   updateProfile
 } from "firebase/auth";
 
-// Konfigurasi Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBQRziRtSa5h6KlkIUOKLKU0mfAqTGZPl8",
   authDomain: "chatapp-8d2fb.firebaseapp.com",
@@ -33,17 +32,13 @@ const firebaseConfig = {
   measurementId: "G-HZDMVCLH3Q"
 };
 
-// Inisialisasi Firebase
 const app = initializeApp(firebaseConfig);
 
-// Siapkan Auth dan Firestore
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// Referensi koleksi messages
 export const messagesCollection = collection(db, "messages") as CollectionReference<DocumentData>;
 
-// Ekspor fungsi-fungsi yang digunakan di aplikasi
 export {
   collection,
   addDoc,

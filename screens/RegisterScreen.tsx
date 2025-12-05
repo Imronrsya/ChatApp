@@ -29,7 +29,6 @@ export default function RegisterScreen({ navigation }: Props) {
   const [isConfirmHidden, setConfirmHidden] = useState(true);
 
   const handleRegister = async () => {
-    // Validasi – SAMA dengan punya temanmu
     if (!username || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'Semua field harus diisi.');
       return;
@@ -46,19 +45,15 @@ export default function RegisterScreen({ navigation }: Props) {
     setLoading(true);
 
     try {
-      // 1. Buat akun
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Update displayName
       await updateProfile(user, { displayName: username });
 
-      // 3. Simpan session (MMKV)
       storage.set('user.uid', user.uid);
       storage.set('user.email', user.email || '');
       storage.set('user.name', username);
 
-      // 4. Tidak navigate — biarkan App.tsx handle redirect
       Alert.alert('Sukses', 'Akun berhasil dibuat!', [
         { text: 'OK', onPress: () => console.log('Register OK → App.tsx akan auto-redirect') }
       ]);
@@ -80,12 +75,14 @@ export default function RegisterScreen({ navigation }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Buat Akun Baru</Text>
-      <Text style={styles.subtitle}>Isi data diri Anda</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>ChatApp</Text>
+      </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
+      <View style={styles.content}>
+        <TextInput
+          style={styles.input}
+          placeholder="Username"
         placeholderTextColor="#888"
         value={username}
         onChangeText={setUsername}
@@ -101,11 +98,10 @@ export default function RegisterScreen({ navigation }: Props) {
         autoCapitalize="none"
       />
       
-      {/* Password */}
       <View style={styles.passwordContainer}>
         <TextInput
           style={styles.inputPassword}
-          placeholder="Password (min. 6 karakter)"
+          placeholder="Password"
           placeholderTextColor="#888"
           value={password}
           onChangeText={setPassword}
@@ -116,7 +112,6 @@ export default function RegisterScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* Konfirmasi Password */}
       <View style={styles.passwordContainer}>
         <TextInput
           style={styles.inputPassword}
@@ -131,23 +126,24 @@ export default function RegisterScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={handleRegister} 
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <ActivityIndicator size="small" color="#FFFFFF" />
-        ) : (
-          <Text style={styles.buttonText}>Register</Text>
-        )}
-      </TouchableOpacity>
-
-      <View style={styles.loginContainer}>
-        <Text style={styles.loginText}>Sudah punya akun? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.loginLink}>Login</Text>
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={handleRegister} 
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.buttonText}>Register</Text>
+          )}
         </TouchableOpacity>
+
+        <View style={styles.loginContainer}>
+          <Text style={styles.loginText}>Sudah punya akun? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.loginLink}>Login</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </ScrollView>
   );
@@ -156,15 +152,22 @@ export default function RegisterScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
     backgroundColor: '#FFFFFF',
+  },
+  header: {
+    paddingTop: 60,
+    paddingBottom: 20,
+    alignItems: 'center',
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     color: '#000',
-    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
@@ -205,7 +208,7 @@ const styles = StyleSheet.create({
   button: {
     width: '100%',
     height: 50,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#DB4444',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -227,7 +230,7 @@ const styles = StyleSheet.create({
   },
   loginLink: {
     fontSize: 14,
-    color: '#007AFF',
+    color: '#DB4444',
     fontWeight: 'bold',
   },
 });
